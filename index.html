@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>To‑Do List — Smart Tasks</title>
+  <meta name="description" content="A fast, offline-capable To-Do app with drag & drop, filters, and local backup."/>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Ccircle cx='128' cy='128' r='120' fill='%2300A884'/%3E%3Cpath fill='white' d='M104 168l-32-32 12-12 20 20 68-68 12 12z'/%3E%3C/svg%3E"/>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0ea5e9">
+  <style>
+    :root{--bg:#0b1220;--panel:#0d1b2a;--muted:#94a3b8;--text:#e2e8f0;--accent:#0ea5e9;--accent-2:#22c55e;--danger:#ef4444;--border:#1f2a44}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,#0b1220,#0b1220 60%,#111827);color:var(--text);font:500 16px system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}
+    .app{width:min(920px,100%);}
+    .card{background:rgba(13,27,42,.9);backdrop-filter: blur(8px);border:1px solid var(--border);border-radius:20px;box-shadow:0 10px 30px rgba(2,6,23,.4);overflow:hidden}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+    .title{display:flex;gap:12px;align-items:center}
+    .title .logo{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#0ea5e9,#22c55e);color:white;font-weight:900}
+    .title h1{font-size:20px;margin:0}
+    .muted{color:var(--muted);font-weight:400}
+    .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    button, .btn{border:1px solid var(--border);background:#0f172a;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;transition:.2s;font-weight:600}
+    button:hover,.btn:hover{transform:translateY(-1px);border-color:#1e293b}
+    .btn-primary{background:linear-gradient(135deg,#0ea5e9,#22c55e);border:none;color:white}
+    .btn-danger{background:#1f1420;border-color:#3b0f14;color:#fecaca}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .controls{padding:18px 20px;border-bottom:1px solid var(--border)}
+    input[type="text"],input[type="date"],select{background:#0b1220;border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;outline:none;min-width:0}
+    input[type="text"]{flex:1}
+    .list{padding:8px 8px 18px}
+    .empty{color:var(--muted);text-align:center;padding:28px}
+    .task{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:14px;background:#0b1220}
+    .task + .task{margin-top:10px}
+    .task.dragging{opacity:.6;outline:2px dashed var(--accent)}
+    .task .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .chip{font-size:12px;border:1px solid var(--border);padding:4px 8px;border-radius:999px;color:#cbd5e1}
+    .chip.priority-high{border-color:#7f1d1d;color:#fecaca;background:#1f0b0b}
+    .chip.priority-med{border-color:#1e3a8a;color:#bfdbfe;background:#0b1220}
+    .chip.priority-low{border-color:#065f46;color:#bbf7d0;background:#071b17}
+    .task.done{opacity:.75}
+    .task.done .text{text-decoration:line-through;color:#94a3b8}
+    .text{font-weight:600}
+    .task .right{display:flex;gap:8px}
+    .search{flex:1}
+    .footer{padding:16px 20px;display:flex;gap:12px;justify-content:space-between;border-top:1px solid var(--border);color:var(--muted);font-size:14px}
+    .link{color:#93c5fd;text-decoration:none}
+    @media (max-width:640px){ header{flex-direction:column;align-items:flex-start}.actions{width:100%}.row{width:100%} }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <header>
+        <div class="title">
+          <div class="logo">✓</div>
+          <div>
+            <h1>Smart Tasks</h1>
+            <div class="muted">Fast to‑do list with filters, drag & drop, and offline storage</div>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="backupBtn" title="Download tasks backup">Backup</button>
+          <label class="btn" for="restoreFile" title="Restore from backup">Restore<input id="restoreFile" type="file" accept="application/json" hidden/></label>
+          <button id="clearBtn" class="btn-danger" title="Delete all tasks">Clear</button>
+          <a class="btn btn-primary" href="#" id="installBtn" style="display:none">Install App</a>
+        </div>
+      </header>
+
+      <div class="controls">
+        <div class="row">
+          <input id="newTask" type="text" placeholder="Add a task and press Enter…" />
+          <select id="priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+          <input id="due" type="date"/>
+          <button id="addBtn" class="btn-primary">Add</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <input id="search" class="search" type="text" placeholder="Search tasks…" />
+          <select id="filter">
+            <option value="all" selected>All</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="overdue">Overdue</option>
+            <option value="today">Due Today</option>
+          </select>
+          <select id="sort">
+            <option value="created">Sort: Created</option>
+            <option value="due">Sort: Due Date</option>
+            <option value="priority">Sort: Priority</option>
+            <option value="alpha">Sort: A→Z</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="list" class="list" aria-live="polite"></div>
+
+      <div class="footer">
+        <div><span id="count">0</span> tasks</div>
+        <div>Built with ❤️ — works offline</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
